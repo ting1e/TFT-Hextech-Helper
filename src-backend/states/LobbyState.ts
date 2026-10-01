@@ -54,24 +54,27 @@ export class LobbyState implements IState {
 
     /**
      * 根据用户设置获取对应的队列 ID
-     * @returns TFT 队列 ID（匹配、排位或发条鸟）
+     * @returns TFT 队列 ID（匹配、排位、发条鸟或回归赛季）
      */
     private getQueueId(): Queue {
         const tftMode = settingsStore.get('tftMode');
-        
+
         switch (tftMode) {
             case TFTMode.RANK:
-                logger.info("[LobbyState] 当前模式: S16 排位赛");
+                logger.info("[LobbyState] 当前模式: 主赛季排位赛");
                 return Queue.TFT_RANKED;
             case TFTMode.CLOCKWORK_TRAILS:
                 logger.info("[LobbyState] 当前模式: 发条鸟的试炼");
                 return Queue.TFT_FATIAO; // 发条鸟队列ID = 1220
             case TFTMode.S4_RUISHOU:
                 logger.info("[LobbyState] 当前模式: S4 瑞兽闹新春");
-                return Queue.TFT_RUISHOU; // 瑞兽队列ID = 6110
+                return Queue.TFT_SET_REVIVAL; // 回归赛季队列ID = 6110
+            case TFTMode.S17_XINGSHEN:
+                logger.info("[LobbyState] 当前模式: S17 星神 匹配");
+                return Queue.TFT_SET_REVIVAL; // 回归赛季队列ID = 6110
             case TFTMode.NORMAL:
             default:
-                logger.info("[LobbyState] 当前模式: S16 匹配模式");
+                logger.info("[LobbyState] 当前模式: 主赛季匹配模式");
                 return Queue.TFT_NORMAL;
         }
     }

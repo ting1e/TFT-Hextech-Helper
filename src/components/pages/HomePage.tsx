@@ -314,8 +314,8 @@ const ModeToggleContainer = styled.div`
 `;
 
 /**
- * 通用三选一胶囊组件（竖向）
- * 用于赛季选择：S16 / S4 / 发条鸟
+ * 通用多选一胶囊组件（竖向）
+ * 每一行对应 MODE_OPTIONS 里的一个模式
  */
 const ModeTogglePill = styled.div<{ theme: ThemeType }>`
   appearance: none;
@@ -338,58 +338,59 @@ const ModeTogglePill = styled.div<{ theme: ThemeType }>`
 `;
 
 /**
- * 赛季选择滑块指示器（竖向滑动）
- * $modeIndex: 0=S17 星神, 1=发条鸟
+ * 模式选择滑块指示器（竖向滑动）
+ * $modeIndex: 当前模式在 MODE_OPTIONS 中的下标
+ * $modeCount: 模式总数（决定每一行的高度）
  * 通过 top 值变化实现上下滑动
  *
  * 实现细节喵：
- * - 目前只有 2 个模式，所以滑块占一半高度（50%）
- * - top 用 calc(index * 50% + 2px)，切换时平滑滑动
- * - S4 瑞兽闹新春已下线，原有新春红金渐变也随之移除
+ * - 胶囊有 4px 内边距，文本行平分剩下的高度，所以滑块按 (100% - 8px) / count 精确对齐每一行
+ * - 行数多了以后，旧的 calc(index * 50% + 2px) 近似写法会逐行累积偏移，所以改成精确公式
  */
-const ModeToggleIndicator = styled.div<{ theme: ThemeType; $modeIndex: number }>`
+const ModeToggleIndicator = styled.div<{ theme: ThemeType; $modeIndex: number; $modeCount: number }>`
   position: absolute;
   left: 2px;
-  top: ${props => `calc(${props.$modeIndex * 50}% + 2px)`};
+  top: ${props => `calc(4px + (100% - 8px) * ${props.$modeIndex} / ${props.$modeCount})`};
   width: calc(100% - 4px);
-  height: calc(50% - 3px);
+  height: ${props => `calc((100% - 8px) / ${props.$modeCount})`};
   border-radius: 999px;
-  background: ${props => {
-    switch (props.$modeIndex) {
-      case 1: // 发条鸟 - 紫色
-        return 'linear-gradient(135deg, #9c27b0 0%, #7b1fa2 100%)';
-      default: // S17 星神 - 主色蓝（未来可单独换成星神主题色）
-        return `linear-gradient(135deg, ${props.theme.colors.primary} 0%, ${props.theme.colors.primaryHover} 100%)`;
-    }
-  }};
+  background: linear-gradient(135deg, ${props => props.theme.colors.primary} 0%, ${props => props.theme.colors.primaryHover} 100%);
   transition: top 0.22s ease, background 0.22s ease;
 `;
 
-/** 文本层（在滑块之上），竖向两行 grid 布局（S17 / 发条鸟） */
+/** 文本层（在滑块之上），竖向 grid 布局，每个模式一行 */
 const ModeToggleTextRow = styled.div`
   position: relative;
   z-index: 1;
   width: 100%;
   display: grid;
-  grid-template-rows: 1fr 1fr;
+  grid-auto-rows: 1fr;
   align-items: center;
 `;
 
-/** 单个文本标签（可点击切换） */
-const ModeToggleLabel = styled.button<{ theme: ThemeType; $active: boolean }>`
+/**
+ * 单个文本标签（可点击切换）
+ * $disabled: 未适配的模式，置灰 + 禁止光标（不用原生 disabled 属性，
+ *            因为部分 Chromium 版本不会给 disabled 按钮派发鼠标事件，hover 浮窗就出不来了）
+ */
+const ModeToggleLabel = styled.button<{ theme: ThemeType; $active: boolean; $disabled?: boolean }>`
+  width: 100%;
   background: none;
   border: none;
-  padding: 6px 0;
+  padding: 5px 0;
   font-size: 0.85rem;
   font-weight: 600;
   text-align: center;
   letter-spacing: 0.5px;
   color: ${props => props.$active ? props.theme.colors.textOnPrimary : props.theme.colors.textSecondary};
+  opacity: ${props => props.$disabled ? 0.45 : 1};
   transition: color 0.25s ease;
-  cursor: pointer;
+  cursor: ${props => props.$disabled ? 'not-allowed' : 'pointer'};
 
   &:hover {
-    color: ${props => props.$active ? props.theme.colors.textOnPrimary : props.theme.colors.text};
+    color: ${props => props.$active
+      ? props.theme.colors.textOnPrimary
+      : (props.$disabled ? props.theme.colors.textSecondary : props.theme.colors.text)};
   }
 
   &:focus-visible {
@@ -449,12 +450,16 @@ const ModeLabelWrapper = styled.div`
   position: relative;
 `;
 
-/** 浮窗标题（模式名称） */
-const ModeTooltipTitle = styled.div<{ theme: ThemeType; $color?: string }>`
+/** 浮窗标题（模式名称）；$danger 用于未适配模式的"不许选"提示 */
+const ModeTooltipTitle = styled.div<{ theme: ThemeType; $color?: string; $danger?: boolean }>`
   font-size: 0.9rem;
   font-weight: 700;
-  color: ${props => props.$color || props.theme.colors.primary};
+  color: ${props => props.$danger ? props.theme.colors.error : (props.$color || props.theme.colors.primary)};
   margin-bottom: 6px;
+
+  &:last-child {
+    margin-bottom: 0;
+  }
 `;
 
 /** 浮窗描述文本 */
@@ -476,77 +481,6 @@ const ModeTooltipTag = styled.div<{ theme: ThemeType }>`
   border-radius: 4px;
   padding: 1px 6px;
   margin-bottom: 6px;
-`;
-
-/**
- * S16 子模式选择器（匹配/排位）- 二选一胶囊
- * 仅在选择 S16 赛季时显示
- */
-const SubModeTogglePill = styled.div<{ theme: ThemeType }>`
-  appearance: none;
-  border: 1px solid ${props => props.theme.colors.border};
-  background: ${props => props.theme.colors.elementBg};
-  border-radius: 32px;
-  padding: 4px;
-  height: 30px;
-  width: 140px;
-  display: inline-flex;
-  align-items: center;
-  position: relative;
-  overflow: hidden;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.14);
-  transition: border-color 0.25s ease, box-shadow 0.25s ease, opacity 0.3s ease, max-height 0.3s ease;
-
-  &:hover {
-    border-color: ${props => props.theme.colors.primary};
-    box-shadow: 0 3px 9px rgba(0, 0, 0, 0.18);
-  }
-`;
-
-/** S16 子模式滑块指示器 - 匹配=蓝色, 排位=橙色 */
-const SubModeToggleIndicator = styled.div<{ theme: ThemeType; $isRank: boolean }>`
-  position: absolute;
-  top: 2px;
-  left: ${props => props.$isRank ? 'calc(50% + 2px)' : '2px'};
-  width: calc(50% - 4px);
-  height: calc(100% - 4px);
-  border-radius: 999px;
-  background: ${props => props.$isRank
-    ? `linear-gradient(135deg, ${props.theme.colors.warning} 0%, ${props.theme.colors.warning}cc 100%)`
-    : `linear-gradient(135deg, ${props.theme.colors.primary} 0%, ${props.theme.colors.primaryHover} 100%)`};
-  transition: left 0.22s ease, background 0.22s ease;
-`;
-
-/** S16 子模式文本层 */
-const SubModeToggleTextRow = styled.div`
-  position: relative;
-  z-index: 1;
-  width: 100%;
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  align-items: center;
-`;
-
-/** S16 子模式文本标签 */
-const SubModeToggleLabel = styled.button<{ theme: ThemeType; $active: boolean }>`
-  background: none;
-  border: none;
-  padding: 0;
-  font-size: 0.85rem;
-  font-weight: 600;
-  text-align: center;
-  letter-spacing: 0.5px;
-  color: ${props => props.$active ? props.theme.colors.textOnPrimary : props.theme.colors.textSecondary};
-  transition: color 0.25s ease;
-  cursor: pointer;
-
-  &:hover {
-    color: ${props => props.$active ? props.theme.colors.textOnPrimary : props.theme.colors.text};
-  }
-
-  &:focus-visible {
-    outline: none;
-  }
 `;
 
 // ============================================
@@ -1098,14 +1032,51 @@ const RadarCircleInner = styled(RadarCircle)`
 /** OP.GG 头像 CDN 基础 URL */
 const PROFILE_ICON_BASE_URL = 'https://opgg-static.akamaized.net/meta/images/profile_icons/profileIcon';
 
+/** 模式选择列表中的一项 */
+interface ModeOption {
+    /** 唯一标识，用于 hover 浮窗 */
+    key: string;
+    /** 胶囊里显示的短名称 */
+    label: string;
+    /** 客户端里的完整模式名（浮窗里展示） */
+    fullName: string;
+    /** 对应的后端模式；null 表示后端还没有这个模式 */
+    mode: TFTMode | null;
+    /** 是否已适配、允许选择 */
+    enabled: boolean;
+}
+
+/**
+ * 模式选择列表，和客户端当前开放的云顶队列一一对应（来自 /lol-game-queues/v1/queues）：
+ *   自然之力 匹配 1090 / 排位 1100 / 双人作战 1160、发条鸟的试炼 1220、星神 匹配 6110、英雄联盟传奇 恭喜发财 1210
+ *
+ * 目前只有「星神 匹配」已适配，其余模式 hover 时提示未适配、点击无效。
+ * 以后适配了某个模式，把它的 enabled 改成 true（没有 mode 的还要先在后端加 TFTMode）即可。
+ */
+const MODE_OPTIONS: ModeOption[] = [
+    { key: 'NATURE_NORMAL', label: '自然之力 匹配', fullName: '自然之力 匹配(BETA测试)', mode: TFTMode.NORMAL, enabled: false },
+    { key: 'NATURE_RANK', label: '自然之力 排位', fullName: '自然之力 排位(BETA测试)', mode: TFTMode.RANK, enabled: false },
+    { key: 'NATURE_DOUBLE', label: '自然之力 双人作战', fullName: '自然之力 双人作战(BETA测试)', mode: null, enabled: false },
+    { key: 'CLOCKWORK', label: '发条鸟的试炼', fullName: '发条鸟的试炼 (BETA测试)', mode: TFTMode.CLOCKWORK_TRAILS, enabled: false },
+    { key: 'XINGSHEN', label: '星神 匹配', fullName: '星神 匹配', mode: TFTMode.S17_XINGSHEN, enabled: true },
+    { key: 'TREASURE', label: '恭喜发财', fullName: '英雄联盟传奇 恭喜发财', mode: null, enabled: false },
+];
+
+/** 默认模式：历史配置里的模式已下线/未适配时，兜底切到这里 */
+const DEFAULT_TFT_MODE = TFTMode.S17_XINGSHEN;
+
+/** 判断某个模式当前是否可选 */
+const isSelectableMode = (mode: string): boolean =>
+    MODE_OPTIONS.some(option => option.enabled && option.mode === mode);
+
 export const HomePage = () => {
     const [isRunning, setIsRunning] = useState(false);
     const [summonerInfo, setSummonerInfo] = useState<SummonerInfo | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     // 新增：跟踪 LCU 连接状态
     const [isLcuConnected, setIsLcuConnected] = useState(false);
-    // 新增：TFT 游戏模式（匹配/排位）
-    const [tftMode, setTftMode] = useState<TFTMode>(TFTMode.NORMAL);
+    // 新增：TFT 游戏模式
+    const [tftMode, setTftMode] = useState<TFTMode>(DEFAULT_TFT_MODE);
     // 新增：日志模式（简略/详细）
     const [logMode, setLogMode] = useState<LogMode>(LogMode.SIMPLE);
     // 新增：管理员权限状态（null 表示还在检测中）
@@ -1213,11 +1184,14 @@ export const HomePage = () => {
             const running = await window.hex.getStatus();
             setIsRunning(running);
 
-            // 获取 TFT 游戏模式（支持所有赛季模式）
+            // 获取 TFT 游戏模式
+            // 历史配置里可能存着已下线/未适配的模式（如 NORMAL/RANK 现在指向「自然之力」队列），
+            // 统一兜底到默认模式并写回，避免后端按旧模式去排队
             const mode = await window.lineup.getTftMode();
-            const currentMode = Object.values(TFTMode).includes(mode as TFTMode) 
-                ? mode as TFTMode 
-                : TFTMode.NORMAL;
+            const currentMode = isSelectableMode(mode) ? mode as TFTMode : DEFAULT_TFT_MODE;
+            if (currentMode !== mode) {
+                await window.lineup.setTftMode(currentMode);
+            }
             setTftMode(currentMode);
 
             // 获取日志模式
@@ -1390,76 +1364,41 @@ export const HomePage = () => {
     };
 
     /**
-     * 切换赛季模式（S17 星神 / 发条鸟）
+     * 切换游戏模式
      *
      * 交互说明喵：
-     * - 上层胶囊：选择模式（S17 星神 / 发条鸟的试炼）
-     * - S17 星神选中时，下方显示匹配/排位子选择器
-     * - 发条鸟只支持匹配，切换时自动设置对应模式
+     * - 未适配的模式：hover 浮窗已经提示"不许选"，点击直接忽略
      * - 运行中禁止切换
-     *
-     * 注：S4 瑞兽闹新春已下线，保留 TFTMode.S4_RUISHOU 枚举仅作为兼容历史配置用
      */
-    const handleSeasonChange = async (season: 'S16' | 'CLOCKWORK') => {
+    const handleModeSelect = async (option: ModeOption) => {
+        if (!option.enabled || option.mode === null) return;
+        if (option.mode === tftMode) return;
+
         if (isRunning) {
             toast.error('运行中无法切换模式');
             return;
         }
 
-        let newMode: TFTMode;
-        let toastMsg: string;
-
-        switch (season) {
-            case 'S16':
-                // 切回 S17 星神时，默认用匹配模式（如果之前已经在排位则保持）
-                // 注：内部枚举仍叫 NORMAL/RANK，保持与后端约定不变
-                newMode = (tftMode === TFTMode.RANK) ? TFTMode.RANK : TFTMode.NORMAL;
-                toastMsg = '已切换到 S17 星神';
-                break;
-            case 'CLOCKWORK':
-                newMode = TFTMode.CLOCKWORK_TRAILS;
-                toastMsg = '已切换到发条鸟的试炼';
-                break;
-        }
-
-        if (newMode === tftMode) return;
-
+        const newMode = option.mode;
         setTftMode(newMode);
         await window.lineup.setTftMode(newMode);
         // 切换模式后重新检查对应赛季是否有选中阵容
         await checkHasSelectedLineup(newMode);
-        toast.success(toastMsg);
+        toast.success(`已切换到${option.fullName}`);
     };
 
     /**
-     * S16 模式下切换匹配/排位
-     */
-    const handleS16SubModeChange = async (isRank: boolean) => {
-        const newMode = isRank ? TFTMode.RANK : TFTMode.NORMAL;
-        if (newMode === tftMode) return;
-
-        if (isRunning) {
-            toast.error('运行中无法切换模式');
-            return;
-        }
-
-        setTftMode(newMode);
-        await window.lineup.setTftMode(newMode);
-        toast.success(isRank ? '已切换到排位模式' : '已切换到匹配模式');
-    };
-
-    /**
-     * 两个游戏模式的详情描述（hover 浮窗内容）
+     * 已适配模式的详情描述（hover 浮窗内容），key 对应 MODE_OPTIONS 的 key
      * 每个模式包含：标签（赛季信息）、标题颜色、简短描述
+     * 未适配的模式统一显示"不许选"提示，不在这里配置
      *
-     * 注：S4 瑞兽闹新春已下线，这里移除对应描述
+     * 注：发条鸟目前未适配，描述先保留，重新开放时直接生效
      */
-    const modeDescriptions = {
-        S16: {
-            tag: '赛季 S17',
-            title: 'S17 星神',
-            titleColor: undefined,  // 使用默认主色（蓝色）
-            desc: '当前主赛季「星神」，支持匹配和排位两种模式。包含完整的自动下棋、阵容推荐和海克斯选择功能。用于刷峡谷和云顶的宝典，云顶通行证。',
+    const modeDescriptions: Record<string, { tag: string; title: string; titleColor?: string; desc: string }> = {
+        XINGSHEN: {
+            tag: '回归赛季 S17',
+            title: '星神 匹配',
+            desc: 'S17「星神」限时回归队列，仅支持匹配。包含完整的自动下棋、阵容推荐和海克斯选择功能。用于刷峡谷和云顶的宝典，云顶通行证。',
         },
         CLOCKWORK: {
             tag: '特殊玩法',
@@ -1484,7 +1423,7 @@ export const HomePage = () => {
 
     /**
      * 鼠标进入模式标签时：计算浮窗位置并做边界检测
-     * @param modeKey - 模式标识（'S16' | 'S4' | 'CLOCKWORK'）
+     * @param modeKey - 模式标识（MODE_OPTIONS 的 key）
      * @param e - 鼠标事件，用于获取触发元素的位置
      * 
      * 实现细节：
@@ -1570,25 +1509,12 @@ export const HomePage = () => {
         setHoveredMode(null);
     }, []);
 
-    /**
-     * 获取当前赛季对应的索引（用于上层胶囊滑块位置）
-     * 0=S17 星神, 1=发条鸟
-     */
-    const getSeasonIndex = (): number => {
-        switch (tftMode) {
-            case TFTMode.NORMAL:
-            case TFTMode.RANK:
-                return 0; // S17 星神（内部枚举名仍保留 NORMAL/RANK）
-            case TFTMode.CLOCKWORK_TRAILS:
-                return 1; // 发条鸟
-            default:
-                // S4_RUISHOU 已下线，遇到历史配置兜底回 S17
-                return 0;
-        }
-    };
+    /** 当前模式在 MODE_OPTIONS 中的下标（用于胶囊滑块位置），-1 表示不在列表里 */
+    const activeModeIndex = MODE_OPTIONS.findIndex(option => option.mode === tftMode);
 
-    /** 当前是否处于 S16 赛季（显示匹配/排位子选择器） */
-    const isS16Season = tftMode === TFTMode.NORMAL || tftMode === TFTMode.RANK;
+    /** 当前 hover 的模式，以及它的详情描述（未适配的模式没有描述） */
+    const hoveredOption = MODE_OPTIONS.find(option => option.key === hoveredMode);
+    const hoveredDescription = hoveredOption?.enabled ? modeDescriptions[hoveredOption.key] : undefined;
 
     /** 当前模式是否需要选择阵容（发条鸟不需要，其他都需要） */
     const needsLineup = tftMode !== TFTMode.CLOCKWORK_TRAILS;
@@ -1649,80 +1575,52 @@ export const HomePage = () => {
                             <PanelSectionTitle>模式选择</PanelSectionTitle>
                             <ModeToggleContainer>
                                 <ModeTogglePill>
-                                    <ModeToggleIndicator $modeIndex={getSeasonIndex()} />
+                                    {activeModeIndex >= 0 && (
+                                        <ModeToggleIndicator $modeIndex={activeModeIndex} $modeCount={MODE_OPTIONS.length} />
+                                    )}
                                     <ModeToggleTextRow>
-                                        {/* S17 星神（内部枚举 NORMAL/RANK） */}
-                                        <ModeLabelWrapper
-                                            onMouseEnter={(e) => handleModeMouseEnter('S16', e)}
-                                            onMouseLeave={handleModeMouseLeave}
-                                        >
-                                            <ModeToggleLabel
-                                                $active={isS16Season}
-                                                onClick={() => handleSeasonChange('S16')}
+                                        {MODE_OPTIONS.map(option => (
+                                            <ModeLabelWrapper
+                                                key={option.key}
+                                                onMouseEnter={(e) => handleModeMouseEnter(option.key, e)}
+                                                onMouseLeave={handleModeMouseLeave}
                                             >
-                                                S17 星神
-                                            </ModeToggleLabel>
-                                        </ModeLabelWrapper>
-                                        {/* 发条鸟的试炼 */}
-                                        <ModeLabelWrapper
-                                            onMouseEnter={(e) => handleModeMouseEnter('CLOCKWORK', e)}
-                                            onMouseLeave={handleModeMouseLeave}
-                                        >
-                                            <ModeToggleLabel
-                                                $active={tftMode === TFTMode.CLOCKWORK_TRAILS}
-                                                onClick={() => handleSeasonChange('CLOCKWORK')}
-                                            >
-                                                发条鸟的试炼
-                                            </ModeToggleLabel>
-                                        </ModeLabelWrapper>
+                                                <ModeToggleLabel
+                                                    $active={option.mode === tftMode}
+                                                    $disabled={!option.enabled}
+                                                    aria-disabled={!option.enabled}
+                                                    onClick={() => handleModeSelect(option)}
+                                                >
+                                                    {option.label}
+                                                </ModeToggleLabel>
+                                            </ModeLabelWrapper>
+                                        ))}
                                     </ModeToggleTextRow>
                                 </ModeTogglePill>
 
                                 {/* 模式详情浮窗 —— 使用 fixed 定位，渲染在胶囊外部避免被裁切 */}
-                                {hoveredMode && (
+                                {hoveredOption && (
                                     <ModeTooltip
                                         ref={tooltipRef}
-                                        $visible={!!hoveredMode}
+                                        $visible={!!hoveredOption}
                                         $arrowTop={arrowTop}
                                         style={{ top: tooltipPos.top, left: tooltipPos.left }}
                                     >
-                                        <ModeTooltipTag>
-                                            {modeDescriptions[hoveredMode as keyof typeof modeDescriptions].tag}
-                                        </ModeTooltipTag>
-                                        <ModeTooltipTitle
-                                            $color={modeDescriptions[hoveredMode as keyof typeof modeDescriptions].titleColor}
-                                        >
-                                            {modeDescriptions[hoveredMode as keyof typeof modeDescriptions].title}
-                                        </ModeTooltipTitle>
-                                        <ModeTooltipDesc>
-                                            {modeDescriptions[hoveredMode as keyof typeof modeDescriptions].desc}
-                                        </ModeTooltipDesc>
+                                        {hoveredDescription ? (
+                                            <>
+                                                <ModeTooltipTag>{hoveredDescription.tag}</ModeTooltipTag>
+                                                <ModeTooltipTitle $color={hoveredDescription.titleColor}>
+                                                    {hoveredDescription.title}
+                                                </ModeTooltipTitle>
+                                                <ModeTooltipDesc>{hoveredDescription.desc}</ModeTooltipDesc>
+                                            </>
+                                        ) : (
+                                            <>
+                                                <ModeTooltipTag>{hoveredOption.fullName}</ModeTooltipTag>
+                                                <ModeTooltipTitle $danger>不许选，我还没适配呢！</ModeTooltipTitle>
+                                            </>
+                                        )}
                                     </ModeTooltip>
-                                )}
-
-                                {/* S16 子模式选择 匹配/排位（仅 S16 赛季时显示） */}
-                                {isS16Season && (
-                                    <SubModeTogglePill>
-                                        <SubModeToggleIndicator $isRank={tftMode === TFTMode.RANK} />
-                                        <SubModeToggleTextRow>
-                                            <SubModeToggleLabel
-                                                $active={tftMode === TFTMode.NORMAL}
-                                                onClick={() => handleS16SubModeChange(false)}
-                                                title="匹配模式"
-                                                style= { {paddingRight: 4} }
-                                            >
-                                                匹配
-                                            </SubModeToggleLabel>
-                                            <SubModeToggleLabel
-                                                $active={tftMode === TFTMode.RANK}
-                                                onClick={() => handleS16SubModeChange(true)}
-                                                title="排位模式"
-                                                style= { {paddingLeft: 4} }
-                                            >
-                                                排位
-                                            </SubModeToggleLabel>
-                                        </SubModeToggleTextRow>
-                                    </SubModeTogglePill>
                                 )}
                             </ModeToggleContainer>
 

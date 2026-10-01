@@ -78,12 +78,12 @@ export enum Queue {
     RANKED_FLEX = 440, // 召唤师峡谷 - 灵活排位
     ARAM = 450, // 极地大乱斗
     PICKURF = 900, // 无限乱斗
-    TFT_NORMAL = 1090, // 云顶之弈 - 匹配模式
-    TFT_RANKED = 1100, // 云顶之弈 - 排位模式
+    TFT_NORMAL = 1090, // 云顶之弈 - 主赛季匹配模式
+    TFT_RANKED = 1100, // 云顶之弈 - 主赛季排位模式
     TFT_DOUBLE = 1160, //云顶之弈 (双人作战)
     TFT_TREASURE = 1170, //云顶之弈 (恭喜发财)
     TFT_FATIAO = 1220,  // 云顶之弈 - 发条鸟的试炼
-    TFT_RUISHOU =6110,  //  云顶之弈 - 回归赛季: 瑞兽闹新春
+    TFT_SET_REVIVAL = 6110,  //  云顶之弈 - 回归赛季（SET_REVIVAL_TFT）：曾为 S4 瑞兽闹新春，现为 S17 星神
     URF = 1900, // 无限火力
     DOU_HUN = 1700,// 斗魂竞技场
     MORIRENJI = 4210, //  末日人工智能

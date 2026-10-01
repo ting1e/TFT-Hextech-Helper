@@ -12404,6 +12404,7 @@ var TFTMode = /* @__PURE__ */ ((TFTMode2) => {
   TFTMode2["RANK"] = "RANK";
   TFTMode2["CLOCKWORK_TRAILS"] = "CLOCKWORK_TRAILS";
   TFTMode2["S4_RUISHOU"] = "S4_RUISHOU";
+  TFTMode2["S17_XINGSHEN"] = "S17_XINGSHEN";
   return TFTMode2;
 })(TFTMode || {});
 const levelRegion = {
@@ -12837,7 +12838,7 @@ const EQUIP_ALIASES = {
 };
 Object.assign(EQUIP_EN_TO_CN, EQUIP_ALIASES);
 function isStandardChessMode(mode) {
-  return mode === "NORMAL" || mode === "RANK" || mode === "S4_RUISHOU";
+  return mode === "NORMAL" || mode === "RANK" || mode === "S4_RUISHOU" || mode === "S17_XINGSHEN";
 }
 var LogMode = /* @__PURE__ */ ((LogMode2) => {
   LogMode2["SIMPLE"] = "SIMPLE";
@@ -12857,8 +12858,8 @@ class SettingsStore {
     const defaults = {
       isFirstLaunch: true,
       //  首次启动默认为 true，用户确认后设为 false
-      tftMode: TFTMode.NORMAL,
-      //  默认是匹配模式
+      tftMode: TFTMode.S17_XINGSHEN,
+      //  默认是星神匹配（目前唯一已适配的模式）
       logMode: LogMode.SIMPLE,
       //  默认是简略日志模式
       logAutoCleanThreshold: 500,
@@ -13427,11 +13428,11 @@ app.whenReady().then(async () => {
   console.log("✅ [Main] 原生模块检查通过");
   console.log("🚀 [Main] 正在加载业务模块...");
   try {
-    const ServicesModule = await import("./chunks/index-BihQ9x99.js");
+    const ServicesModule = await import("./chunks/index-DWUrFzGb.js");
     hexService = ServicesModule.hexService;
-    const TftOperatorModule = await import("./chunks/TftOperator-DVERg1ZX.js").then((n) => n.T);
+    const TftOperatorModule = await import("./chunks/TftOperator-DUS_e-Zl.js").then((n) => n.T);
     tftOperator = TftOperatorModule.tftOperator;
-    const LineupModule = await import("./chunks/index-bGCrXB73.js");
+    const LineupModule = await import("./chunks/index-DSBe4eF5.js");
     lineupLoader = LineupModule.lineupLoader;
     const GlobalHotkeyManagerModule = await import("./chunks/GlobalHotkeyManager-Cbcy0EP4.js");
     globalHotkeyManager = GlobalHotkeyManagerModule.globalHotkeyManager;

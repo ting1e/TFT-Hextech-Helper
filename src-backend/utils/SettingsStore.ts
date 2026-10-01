@@ -107,7 +107,7 @@ class SettingsStore {
         //  创建默认配置
         const defaults: AppSettings = {
             isFirstLaunch: true,        //  首次启动默认为 true，用户确认后设为 false
-            tftMode: TFTMode.NORMAL,    //  默认是匹配模式
+            tftMode: TFTMode.S17_XINGSHEN,    //  默认是星神匹配（目前唯一已适配的模式）
             logMode: LogMode.SIMPLE,    //  默认是简略日志模式
             logAutoCleanThreshold: 500, //  默认超过 500 条时自动清理
             toggleHotkeyAccelerator: 'F1',  //  默认快捷键是 F1
