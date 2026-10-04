@@ -31,7 +31,11 @@ release
 *.njsproj
 *.sln
 *.sw?
-test
+
+# 测试基础设施：忽略临时文件，但纳入 helpers / stubs
+test/*
+!test/helpers/
+!test/stubs/
 
 # 其他
 public/GameConfig/UserConfig/*

@@ -4,7 +4,7 @@ import https from 'https';
 import cp from 'child_process';
 import {LCUProcessInfo} from "./utils/LcuConnector";
 import axios, {AxiosInstance} from "axios";
-import {LobbyConfig, MatchState, Queue, SummonerInfo} from "./utils/LCUProtocols.ts";
+import {GameFlowPhase, LobbyConfig, MatchState, Queue, SummonerInfo} from "./utils/LCUProtocols.ts";
 import {logger} from "../utils/Logger.ts";
 
 // 定义 LCUManager 能广播的所有事件
@@ -342,6 +342,49 @@ class LCUManager extends EventEmitter {
 
     public getGameflowSession(): Promise<any> {
         return this.request('GET', '/lol-gameflow/v1/session');
+    }
+
+    /**
+     * 查询当前真实的 gameflow 阶段
+     * @description 基于 getGameflowSession() 封装，只关心 session.phase 字段
+     *              用于在 WebSocket 事件丢失时通过 REST 兜底查询
+     * @returns 当前 gameflow 阶段，查询失败或字段缺失时返回 undefined
+     */
+    public async getGameflowPhase(): Promise<GameFlowPhase | undefined> {
+        const session = await this.getGameflowSession();
+        return session?.phase as GameFlowPhase | undefined;
+    }
+
+    /**
+     * 请求客户端重新连接到正在进行的对局
+     * @description 用于以下异常场景：
+     *              - 匹配成功后没有正常进入游戏（GameflowPhase = Reconnect）
+     *              - 游戏启动失败（GameflowPhase = FailedToLaunch）
+     *              - InGame API 长时间不可访问
+     *              调用 LCU 的 /lol-gameflow/v1/reconnect 接口，让客户端尝试重新连入对局
+     * @returns Promise<any>
+     */
+    public reconnectGame(): Promise<any> {
+        logger.info('🔄 [LCUManager] 正在请求重新连接对局...');
+        return this.request('POST', '/lol-gameflow/v1/reconnect');
+    }
+
+    /**
+     * 主动跳过对局结束后的结算/统计等待页面
+     * @description 对局结束后客户端可能停留在 WaitingForStats / PreEndOfGame / EndOfGame
+     *              调用该接口可以直接关闭结算页并返回大厅
+     *              主接口为 /lol-end-of-game/v1/state/dismiss-stats，
+     *              失败时回退到 /lol-gameflow/v1/dismiss-end-of-game-stats
+     * @returns Promise<any>
+     */
+    public async dismissEndOfGameStats(): Promise<any> {
+        logger.info('⏭️ [LCUManager] 正在跳过对局结算页面...');
+        try {
+            return await this.request('POST', '/lol-end-of-game/v1/state/dismiss-stats');
+        } catch (error) {
+            logger.warn('[LCUManager] 跳过结算接口(主)失败，尝试备用接口...');
+            return await this.request('POST', '/lol-gameflow/v1/dismiss-end-of-game-stats');
+        }
     }
 
     public getExtraGameClientArgs(): Promise<any> {

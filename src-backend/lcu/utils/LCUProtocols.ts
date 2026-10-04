@@ -23,6 +23,8 @@ export interface LCUIpcChannels {
  * | InProgress      | 游戏加载中 and 游戏进行中，具体区分是否开局，要ping本地端口                  
  * | WaitingForStats | 游戏已结束，等待加载对局统计    
  * | PreEndOfGame    | 游戏统计已就绪                               
+ * | Reconnect       | 游戏需要重连（对局已存在，但客户端未正常进入）      
+ * | FailedToLaunch  | 游戏启动失败，需要自动恢复                       
  */
 export type GameFlowPhase = 
     | 'None' 
@@ -35,7 +37,70 @@ export type GameFlowPhase =
     | 'WaitingForStats' 
     | 'PreEndOfGame'
     | 'EndOfGame'
+    | 'Reconnect'
+    | 'FailedToLaunch'
     | 'TerminatedInError';
+
+/**
+ * 异常/需要恢复的 gameflow 阶段集合
+ * @description 当客户端处于这些阶段时，说明对局无法正常进行，需要主动重连或恢复
+ *              - Reconnect: 对局仍在，但客户端需要重连
+ *              - FailedToLaunch: 游戏启动失败
+ *              - ReconnectAvailable: 部分版本/接口会出现的可重连状态
+ */
+export const ABNORMAL_GAMEFLOW_PHASES: ReadonlyArray<GameFlowPhase | 'ReconnectAvailable'> = [
+    'Reconnect',
+    'ReconnectAvailable',
+    'FailedToLaunch',
+] as const;
+
+/**
+ * 对局已结束的 gameflow 阶段集合
+ * @description 检测到这些阶段说明本局已经结束，可以跳过结算并返回大厅
+ *              - WaitingForStats: 游戏已结束，等待加载对局统计
+ *              - PreEndOfGame: 游戏统计已就绪
+ *              - EndOfGame: 结算页面
+ */
+export const END_OF_GAME_PHASES: ReadonlyArray<GameFlowPhase> = [
+    'WaitingForStats',
+    'PreEndOfGame',
+    'EndOfGame',
+] as const;
+
+/**
+ * 已经回到大厅/主界面的 gameflow 阶段集合
+ */
+export const LOBBY_GAMEFLOW_PHASES: ReadonlyArray<GameFlowPhase> = [
+    'None',
+    'Lobby',
+] as const;
+
+/**
+ * 判断某个 gameflow 阶段是否需要异常恢复（重连）
+ * @param phase gameflow 阶段
+ */
+export function isAbnormalGameflowPhase(phase: string | undefined | null): boolean {
+    if (!phase) return false;
+    return (ABNORMAL_GAMEFLOW_PHASES as ReadonlyArray<string>).includes(phase);
+}
+
+/**
+ * 判断某个 gameflow 阶段是否表示对局已经结束
+ * @param phase gameflow 阶段
+ */
+export function isEndOfGamePhase(phase: string | undefined | null): boolean {
+    if (!phase) return false;
+    return (END_OF_GAME_PHASES as ReadonlyArray<string>).includes(phase);
+}
+
+/**
+ * 判断某个 gameflow 阶段是否表示已经回到大厅/主界面
+ * @param phase gameflow 阶段
+ */
+export function isLobbyGameflowPhase(phase: string | undefined | null): boolean {
+    if (!phase) return false;
+    return (LOBBY_GAMEFLOW_PHASES as ReadonlyArray<string>).includes(phase);
+}
 
 //  创建超级参数提取器
 export type ArgsFromIpcChannel<V> = V extends (...args: unknown[]) => unknown ? Parameters<V> : [V];

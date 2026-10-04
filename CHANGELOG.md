@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.6.3] - 2026-10-05
+### 挂机流程健壮性（永不永久卡死）
+- 新增 LCU 恢复接口：`reconnectGame()`（主动重连）、`dismissEndOfGameStats()`（自动跳过结算）、`getGameflowPhase()`（读取当前 gameflow 阶段）。
+- 新增 `GameflowRecovery` 恢复核心：统一处理重连去重、冷却、最多 3 次自动重连，全部失败才结束游戏进程 + 最后重连，并全程输出中文日志。
+- `GameLoadingState`：在 InGame 轮询之外增加 LCU gameflow 轮询；遇到 `Reconnect` / `ReconnectAvailable` / `FailedToLaunch` 自动重连；`InProgress` 但 InGame 长时间不可用时触发重连；新增加载硬超时，超时后执行最终恢复并回到大厅，不再无限等待。
+- `GameRunningState`：将 `WaitingForStats` / `PreEndOfGame` / `EndOfGame` 均视为对局结束并自动跳过结算；在 WebSocket 之外增加 REST 看门狗，防止漏事件导致卡死；轮询到大厅后自动返回 `LobbyState` 开始下一局；遇到 `Reconnect` 自动重连。
+- `LobbyState`：在 WebSocket 之外增加 REST gameflow 兜底轮询；接受对局后改用较长的开局超时，超时按真实阶段分流（进入游戏 / 重连 / 恢复 / 回大厅重新排队），避免误取消导致流程中断。
+- 引入 `StateDeps` / `DefaultStateDeps` 依赖注入层，生产接线不变，同时让状态机可脱离 Electron/原生模块进行单元测试。
+- 新增 Vitest 测试套件（恢复核心、三个状态机及完整对局恢复集成测试，共 37 个用例），并新增 `npm test` 脚本。
+
 ## [1.6.1] - 2026-10-01
 - 适配新版本 S17 星神赛季（星神 匹配）。
 - 首页模式选择同步为客户端当前开放的模式，其他模式待适配。
